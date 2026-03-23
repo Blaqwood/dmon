@@ -87,7 +87,7 @@ def calculate_first_hashes():
     x = True
     
     # recursively looks through folder
-    for root, _, files in walk("./"):
+    for root, _, files in walk(MONITOR_FOLDER):
         for file_name in files:
             file_path = Path(root).joinpath(file_name) # path to file
             file_hash = calculate_hash(file_path) # hash of file
@@ -113,5 +113,6 @@ def alert(message):
         print("can't notify")
 
 main()
+
 
 
