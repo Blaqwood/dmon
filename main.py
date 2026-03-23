@@ -9,7 +9,7 @@ from subprocess import run
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-MONITOR_FOLDER = "."
+MONITOR_FOLDER = "/etc"
 LOG_FILE = "./changed.log"
 FIRST_HASHES_FILE = "first_hashes.csv"
 
@@ -113,3 +113,5 @@ def alert(message):
         print("can't notify")
 
 main()
+
+
