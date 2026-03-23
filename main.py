@@ -10,7 +10,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 MONITOR_FOLDER = "/etc"
-LOG_FILE = "/usr/changed.log"
+LOG_FILE = "/usr/hids.log"
 FIRST_HASHES_FILE = "/usr/first_hashes.csv"
 
 def main():
