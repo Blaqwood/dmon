@@ -12,6 +12,7 @@ import time
 import threading
 from collections import defaultdict
 from datetime import timedelta
+from notifypy import Notify
 
 MONITOR_FOLDER = "/etc"
 LOG_FILE = "./hids.log"
@@ -164,6 +165,11 @@ def calculate_first_hashes():
 # notifies the user
 def alert(message):
     print(message)
+    #notification = Notify()
+    #notification.title = "Alert"
+    #notification.message = message
+    #notification.send()
+
 
  # write to log file
     try:
@@ -179,5 +185,7 @@ def alert(message):
     
         print("can't notify")
 main()
+
+
 
 
