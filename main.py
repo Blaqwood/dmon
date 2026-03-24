@@ -164,11 +164,15 @@ def calculate_first_hashes():
     return table
 # notifies the user
 def alert(message):
-    print(message)
+    #print(message)
     #notification = Notify()
     #notification.title = "Alert"
     #notification.message = message
     #notification.send()
+    try:
+        run(["notify-send", "-u", "critical", message])
+    except Exception:
+        X = 0
 
 
  # write to log file
@@ -179,11 +183,6 @@ def alert(message):
         print("can't write to log")
     
     # second: send desktop notification
-    try:
-        run(["notify-send", "-u", "critical", "-c" "network.disconnected", message])
-    except (subprocess.SubprocessError):
-    
-        print("can't notify")
 main()
 
 
