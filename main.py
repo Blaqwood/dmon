@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 from os import walk
 from os.path import join
 from hashlib import sha256
@@ -8,21 +7,88 @@ from pathlib import Path
 from subprocess import run
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import re
+import time
+import threading
+from collections import defaultdict
+from datetime import timedelta
 
 MONITOR_FOLDER = "/etc"
-LOG_FILE = "/usr/hids.log"
-FIRST_HASHES_FILE = "/usr/first_hashes.csv"
+LOG_FILE = "./hids.log"
+FIRST_HASHES_FILE = "first_hashes.csv"
+SSH_FILE = "/var/log/auth.log"
+
+# --- SSH Brute Force Detection Settings ---
+FAILED_LOGIN_THRESHOLD = 5
+DETECTION_WINDOW_SECONDS = 120
+
+# Regex to parse failed SSH login lines from auth.log
+# Only looks for 'Failed password' so it works across different OS log formats
+FAILED_SSH_PATTERN = re.compile(
+    r"Failed password for (?:invalid user\s+)?(\S+)"
+    r"\s+from\s+(\d{1,3}(?:\.\d{1,3}){3})"
+)
+
+def monitor_ssh_log():
+    # failed_attempts[ip] = list of (timestamp, username) tuples
+    failed_attempts = defaultdict(list)
+
+    try:
+        with open(SSH_FILE, "r") as f:
+            f.seek(0, 2)  # jump to end of file (tail mode)
+            while True:
+                line = f.readline()
+                if not line:
+                    time.sleep(0.5)
+                    continue
+
+                match = FAILED_SSH_PATTERN.search(line)
+                if not match:
+                    continue
+
+                username, ip = match.group(1), match.group(2)
+                event_time = datetime.now()
+
+                failed_attempts[ip].append((event_time, username))
+
+                # Remove entries outside the rolling window
+                cutoff = datetime.now() - timedelta(seconds=DETECTION_WINDOW_SECONDS)
+                failed_attempts[ip] = [
+                    (t, u) for t, u in failed_attempts[ip] if t >= cutoff
+                ]
+
+                count = len(failed_attempts[ip])
+
+                alert("[{}] SSH failed login: user='{}' ip='{}' (failures in window: {})".format(
+                    event_time.strftime("%d/%m/%Y %l:%M:%S %p"), username, ip, count
+                ))
+
+                if count == FAILED_LOGIN_THRESHOLD:
+                    usernames_seen = ", ".join(sorted({u for _, u in failed_attempts[ip]}))
+                    alert("[{}] *** BRUTE FORCE DETECTED *** ip='{}' | {} failed logins in {}s | usernames tried: {}".format(
+                        datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"),
+                        ip, count, DETECTION_WINDOW_SECONDS, usernames_seen
+                    ))
+
+    except FileNotFoundError:
+        print(f"[WARNING] SSH log not found: {SSH_FILE}. SSH monitoring disabled.")
+    except PermissionError:
+        print(f"[WARNING] No permission to read {SSH_FILE}. Try running as root.")
 
 def main():
     # hash files first
     print("Hashing all files")
     first_hashes = calculate_first_hashes()
     
+    # Start SSH brute force monitor in a background thread
+    ssh_thread = threading.Thread(target=monitor_ssh_log, daemon=True)
+    ssh_thread.start()
+    print(f"Monitoring SSH log: {SSH_FILE}")
+
     # setup code to watch director
     monitor = Observer()
     event_handler = FileMonitor(first_hashes)
      
-
     monitor.schedule(event_handler, Path(MONITOR_FOLDER).absolute(), recursive=True)
     monitor.start()
     print("Monitoring", Path(MONITOR_FOLDER).absolute())
@@ -33,13 +99,11 @@ def main():
     finally:
         monitor.stop()
         monitor.join()
-
 # child class of the file system monitor
 class FileMonitor(FileSystemEventHandler):
     def __init__(self, first_hashes):
         super().__init__()
         self.first_hashes = first_hashes
-
     def on_created(self, event):
         if not event.is_directory:
             alert("[{}] File created:       {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
@@ -57,7 +121,6 @@ class FileMonitor(FileSystemEventHandler):
             alert("[{}] File deleted:       {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
         else:
             alert("[{}] Directory deleted:  {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
-
     def on_modified(self, event):
         if event.is_directory:
             return
@@ -68,7 +131,6 @@ class FileMonitor(FileSystemEventHandler):
         
         #if current_hash != self.first_hashes.get(file_path):
         alert("[{}] Directory modified: {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
-
 # gets the hash of a file
 def calculate_hash(filepath):
     sha = sha256()
@@ -79,7 +141,6 @@ def calculate_hash(filepath):
     except (PermissionError, OSError, FileNotFoundError) as exc:
         return f"ERROR: {exc}"
     return sha.hexdigest()
-
 # creates hashes for all files and stores them in memory and saves them to a csv file   
 def calculate_first_hashes():
     csv = "File,SHA256 Hash"
@@ -100,10 +161,16 @@ def calculate_first_hashes():
     csv_file.write(csv)
     
     return table
-
 # notifies the user
 def alert(message):
     print(message)
+
+ # write to log file
+    try:
+        with open(LOG_FILE, "a") as log:
+            log.write(message + "\n")
+    except (PermissionError, OSError):
+        print("can't write to log")
     
     # second: send desktop notification
     try:
@@ -111,8 +178,6 @@ def alert(message):
     except (subprocess.SubprocessError):
     
         print("can't notify")
-
 main()
-
 
 
