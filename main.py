@@ -12,8 +12,6 @@ import time
 import threading
 from collections import defaultdict
 
-
-
 MONITOR_FOLDER = "/etc"
 LOG_FILE = "./hids.log"
 FIRST_HASHES_FILE = "first_hashes.csv"
@@ -76,59 +74,26 @@ def monitor_ssh_log():
     except PermissionError:
         print(f"[WARNING] No permission to read {SSH_FILE}. Try running as root.")
 
-def main():
-    # hash files first
-    print("Hashing all files")
-    first_hashes = calculate_first_hashes()
-    
-    # Start SSH brute force monitor in a background thread
-    ssh_thread = threading.Thread(target=monitor_ssh_log, daemon=True)
-    ssh_thread.start()
-    print(f"Monitoring SSH log: {SSH_FILE}")
-
-    # setup code to watch director
-    monitor = Observer()
-    event_handler = FileMonitor(first_hashes)
-     
-    monitor.schedule(event_handler, Path(MONITOR_FOLDER).absolute(), recursive=True)
-    monitor.start()
-    print("Monitoring", Path(MONITOR_FOLDER).absolute())
-    
-    try:
-        while monitor.is_alive():
-            monitor.join(1)
-    finally:
-        monitor.stop()
-        monitor.join()
 # child class of the file system monitor
 class FileMonitor(FileSystemEventHandler):
-    def __init__(self, first_hashes):
-        super().__init__()
-        self.first_hashes = first_hashes
     def on_created(self, event):
         if not event.is_directory:
-            alert("[{}] File created:       {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
-        else:
-            alert("[{}] Directory created:  {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
-"""            
-    def on_moved(self, event):
-        if not event.is_directory:
-            alert("[{}] File moved:         {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
-        else:
-            alert("[{}] Directory moved:    {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
-"""
-
+            time = datetime.now().strftime("%d/%m/%Y %l:%M:%S %p")
+            print("[{}] File created:       {}".format(time, event.src_path))
+            alert("File created {}".format(event.src_path))
+            log(time, "file", "low", event.src_path, "File created: {}".format(event.src_path))
     def on_deleted(self, event):
         if not event.is_directory:
-            alert("[{}] File deleted:       {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
-        else:
-            alert("[{}] Directory deleted:  {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
+            time = datetime.now().strftime("%d/%m/%Y %l:%M:%S %p")
+            print("[{}] File deleted:       {}".format(time, event.src_path))
+            alert("File deleted {}".format(event.src_path))
+            log(time, "file", "low", event.src_path, "File deleted: {}".format(event.src_path))
     def on_modified(self, event):
-        if event.is_directory:
-
-        
-        #if current_hash != self.first_hashes.get(file_path):
-        alert("[{}] Directory modified: {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
+        if not event.is_directory:
+            time = datetime.now().strftime("%d/%m/%Y %l:%M:%S %p")
+            print("[{}] File modified:      {}".format(time, event.src_path))
+            alert("File modified {}".format(event.src_path))
+            log(time, "file", "low", event.src_path, "File modified: {}".format(event.src_path))
         
 # gets the hash of a file
 def calculate_hash(filepath):
@@ -168,10 +133,36 @@ def log(event_time, event_type, severity, source, description):
     # write to log file
     try:
         with open(LOG_FILE, "a") as log:
-            log.write("[{}] [Severity: {}] message + {} {}\n".format())
+            log.write("[Time: {}] [Type: {: <5}] [Severity: {: <8}] [Source: {}] [Description: {}]\n".format(event_time, event_type, severity, source, description))
     except (PermissionError, OSError):
-        print("can't write to log")
+        print("Failed to write to log")
         
+def main():
+    # hash files first
+    print("Hashing all files")
+    first_hashes = calculate_first_hashes()
+    
+    # Start SSH brute force monitor in a background thread
+    ssh_thread = threading.Thread(target=monitor_ssh_log, daemon=True)
+    ssh_thread.start()
+    print(f"Monitoring SSH log: {SSH_FILE}")
+
+    # setup code to watch director
+    monitor = Observer()
+    event_handler = FileMonitor()
+     
+    monitor.schedule(event_handler, Path(MONITOR_FOLDER).absolute(), recursive=True)
+    monitor.start()
+    print("Monitoring", Path(MONITOR_FOLDER).absolute())
+    
+    try:
+        while monitor.is_alive():
+            monitor.join(1)
+    finally:
+        monitor.stop()
+        monitor.join()
+
+
 main()
 
 
