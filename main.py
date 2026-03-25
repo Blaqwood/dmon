@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+
 from os import walk
 from os.path import join, abspath
 from hashlib import sha256
