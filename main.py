@@ -60,7 +60,7 @@ def monitor_ssh_log():
 
                 print("[{}] SSH failed login: user='{}' ip='{}' (failures in window: {})".format(event_time.strftime("%d/%m/%Y %l:%M:%S %p"), username, ip, count))
                 alert("Failed SSH login from ip {}".format(ip))
-                log(event_time, "ssh", "medium", ip, "Failed SSH login from {} to user {}".format(ip, user))
+                log(event_time.strftime("%d/%m/%Y %l:%M:%S %p"), "ssh", "medium", ip, "Failed SSH login from {} to user {}".format(ip, username))
 
                 if count == FAILED_LOGIN_THRESHOLD:
                     usernames_seen = ", ".join(sorted({u for _, u in failed_attempts[ip]}))
