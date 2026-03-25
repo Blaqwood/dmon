@@ -2,7 +2,7 @@
 from os import walk
 from os.path import join, abspath
 from hashlib import sha256
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from subprocess import run
 from watchdog.observers import Observer
@@ -11,7 +11,7 @@ import re
 import time
 import threading
 from collections import defaultdict
-from datetime import timedelta
+
 
 
 MONITOR_FOLDER = "/etc"
@@ -110,13 +110,14 @@ class FileMonitor(FileSystemEventHandler):
             alert("[{}] File created:       {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
         else:
             alert("[{}] Directory created:  {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
-            
+"""            
     def on_moved(self, event):
         if not event.is_directory:
             alert("[{}] File moved:         {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
         else:
             alert("[{}] Directory moved:    {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
-    
+"""
+
     def on_deleted(self, event):
         if not event.is_directory:
             alert("[{}] File deleted:       {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
@@ -124,21 +125,18 @@ class FileMonitor(FileSystemEventHandler):
             alert("[{}] Directory deleted:  {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
     def on_modified(self, event):
         if event.is_directory:
-            return
-    
-        # check hashes work in progress
-        file_path = Path(event.src_path).absolute()
-        current_hash = calculate_hash(file_path)
+
         
         #if current_hash != self.first_hashes.get(file_path):
         alert("[{}] Directory modified: {}".format(datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"), event.src_path))
+        
 # gets the hash of a file
 def calculate_hash(filepath):
     sha = sha256()
     try:
-        file = open(filepath, "rb")
-        data = file.read()
-        sha.update(data) # hash data from fiel
+        with open(filepath, "rb") as file:
+            data = file.read()
+            sha.update(data) # hash data from file
     except (PermissionError, OSError, FileNotFoundError) as exc:
         return f"ERROR: {exc}"
     return sha.hexdigest()
@@ -163,15 +161,14 @@ def calculate_first_hashes():
 def alert(message):
     try:
         run(["notify-send", "-a", "HIDS", "-u", "critical", message])
-        print(message)
     except Exception:
         print("Failed to send desktop notification")
 
-
- # write to log file
+def log(event_time, event_type, severity, source, description): 
+    # write to log file
     try:
         with open(LOG_FILE, "a") as log:
-            log.write(message + "\n")
+            log.write("[{}] [Severity: {}] message + {} {}\n".format())
     except (PermissionError, OSError):
         print("can't write to log")
         
