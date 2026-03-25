@@ -119,8 +119,11 @@ def calculate_first_hashes():
             
             csv += "{},{}\n".format(file_path, file_hash)
     
-    with open(FIRST_HASHES_FILE, "w") as file:
-        file.write(csv)
+    try:
+        with open(FIRST_HASHES_FILE, "w") as file:
+            file.write(csv)
+    except Exception:
+        print("Failed to log initial file hashes")
 
 # notifies the user
 def alert(message):
