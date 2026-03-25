@@ -12,7 +12,7 @@ import time
 import threading
 from collections import defaultdict
 from datetime import timedelta
-from notifypy import Notify
+
 
 MONITOR_FOLDER = "/etc"
 LOG_FILE = "./hids.log"
@@ -164,13 +164,9 @@ def calculate_first_hashes():
     return table
 # notifies the user
 def alert(message):
-    #print(message)
-    #notification = Notify()
-    #notification.title = "Alert"
-    #notification.message = message
-    #notification.send()
     try:
         run(["notify-send", "-u", "critical", message])
+        print(message)
     except Exception:
         X = 0
 
@@ -181,8 +177,7 @@ def alert(message):
             log.write(message + "\n")
     except (PermissionError, OSError):
         print("can't write to log")
-    
-    # second: send desktop notification
+        
 main()
 
 
