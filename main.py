@@ -46,7 +46,7 @@ def monitor_ssh_log():
                     continue
 
                 username, ip = match.group(1), match.group(2)
-                event_time = datetime.now()
+                event_time = datetime.now().strftime("%d/%m/%Y %l:%M:%S %p")
 
                 failed_attempts[ip].append((event_time, username))
 
@@ -58,16 +58,16 @@ def monitor_ssh_log():
 
                 count = len(failed_attempts[ip])
 
-                alert("[{}] SSH failed login: user='{}' ip='{}' (failures in window: {})".format(
-                    event_time.strftime("%d/%m/%Y %l:%M:%S %p"), username, ip, count
-                ))
+                print("[{}] SSH failed login: user='{}' ip='{}' (failures in window: {})".format(event_time, username, ip, count))
+                alert("Failed SSH login from ip {}".format(ip))
+                log(event_time, "ssh", "medium", ip, "Failed SSH login from {} to user {}".format(ip, user))
 
                 if count == FAILED_LOGIN_THRESHOLD:
                     usernames_seen = ", ".join(sorted({u for _, u in failed_attempts[ip]}))
-                    alert("[{}] *** BRUTE FORCE DETECTED *** ip='{}' | {} failed logins in {}s | usernames tried: {}".format(
-                        datetime.now().strftime("%d/%m/%Y %l:%M:%S %p"),
-                        ip, count, DETECTION_WINDOW_SECONDS, usernames_seen
-                    ))
+                    event_time2 = datetime.now().strftime("%d/%m/%Y %l:%M:%S %p")
+                    print("[{}] *** BRUTE FORCE SSH LOGIN DETECTED *** from ip '{}' | {} failed logins in {}s | usernames tried: {}".format(event_time2, ip, count, DETECTION_WINDOW_SECONDS, usernames_seen))
+                    alert("BRUTE FORCE SSH LOGIN DETECTED")
+                    log(event_time2, "ssh", "high", ip, "5 Failed logins from ip {}".format(ip))
 
     except FileNotFoundError:
         print(f"[WARNING] SSH log not found: {SSH_FILE}. SSH monitoring disabled.")
