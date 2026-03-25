@@ -165,10 +165,10 @@ def calculate_first_hashes():
 # notifies the user
 def alert(message):
     try:
-        run(["notify-send", "-u", "critical", message])
+        run(["notify-send", "-a", "HIDS", "-u", "critical", message])
         print(message)
     except Exception:
-        X = 0
+        print("Failed to send desktop notification")
 
 
  # write to log file
