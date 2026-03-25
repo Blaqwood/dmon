@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 from os import walk
-from os.path import join
+from os.path import join, abspath
 from hashlib import sha256
 from datetime import datetime
 from pathlib import Path
@@ -142,26 +142,23 @@ def calculate_hash(filepath):
     except (PermissionError, OSError, FileNotFoundError) as exc:
         return f"ERROR: {exc}"
     return sha.hexdigest()
-# creates hashes for all files and stores them in memory and saves them to a csv file   
+
+# creates hashes for all files and stores them in memory and saves them to a csv file  
 def calculate_first_hashes():
     csv = "File,SHA256 Hash"
-    table = dict()
-    x = True
     
     # recursively looks through folder
     for root, _, files in walk(MONITOR_FOLDER):
         for file_name in files:
-            file_path = Path(root).joinpath(file_name) # path to file
+            file_path = "{}/{}".format(root, file_name) # path to file
             file_hash = calculate_hash(file_path) # hash of file
             print(file_path)
             
-            csv += f"{file_path},{file_hash}\n"
-            table[Path(file_path).absolute()] = file_hash
+            csv += "{},{}\n".format(file_path, file_hash)
     
-    csv_file = open(FIRST_HASHES_FILE, "w")
-    csv_file.write(csv)
-    
-    return table
+    with open(FIRST_HASHES_FILE, "w") as file:
+        file.write(csv)
+
 # notifies the user
 def alert(message):
     try:
