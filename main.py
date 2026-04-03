@@ -16,7 +16,7 @@ from collections import defaultdict
 
 MONITOR_FOLDER = "/etc"
 LOG_FILE = "./hids.log"
-FIRST_HASHES_FILE = "first_hashes.csv"
+FIRST_HASHES_FILE = "first_hashes_{}.csv".format(datetime.now().strftime("%d-%m-%Y_%H:%M:%S"))
 SSH_FILE = "/var/log/auth.log"
 
 # --- SSH Brute Force Detection Settings ---
