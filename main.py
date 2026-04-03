@@ -8,6 +8,7 @@ from pathlib import Path
 from subprocess import run
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import sys
 import re
 import time
 import threading
@@ -161,7 +162,14 @@ def main():
     
     try:
         while monitor.is_alive():
-            monitor.join(1)
+            try:
+                monitor.join(1)
+            except KeyboardInterrupt:
+                option = input("Ctrl-C Pressed. Really Exit Script? (y/n)")
+                if option.strip() == "Y" or option.strip() == "y":
+                    monitor.stop()
+                    monitor.join()
+                    sys.exit(0)
     finally:
         monitor.stop()
         monitor.join()
